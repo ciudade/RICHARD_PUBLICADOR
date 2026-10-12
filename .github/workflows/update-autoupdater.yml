@@ -1,0 +1,51 @@
+name: Update AutoUpdater XML on Release
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  update-xml:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Build autoupdater.xml
+        run: |
+          TAG="${{ github.event.release.tag_name }}"
+          if [ -z "$TAG" ]; then
+            echo "No release tag found. For manual runs, use a release-triggered run."
+            exit 1
+          fi
+
+          VER="${TAG#v}"
+
+          cat > autoupdater.xml <<EOF
+          <?xml version="1.0" encoding="utf-8"?>
+          <item>
+            <version>${VER}</version>
+            <url>https://github.com/ciudade/RICHARD_PUBLICADOR/releases/latest/download/SGC.zip</url>
+            <mandatory value="false" />
+          </item>
+          EOF
+
+      - name: Commit and push to main
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+          git fetch origin main
+          git checkout -B main origin/main
+
+          git add autoupdater.xml
+          git commit -m "Auto-update XML for ${{ github.event.release.tag_name }}" || exit 0
+
+          git push origin main
